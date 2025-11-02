@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Корзина - E-Commerce Store</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <script src="/static/js/common.js"></script>
+</head>
+<body>
+    <header>
+        <nav class="container">
+            <div class="logo">E-Store</div>
+            <ul class="nav-links">
+                <li><a href="/">Главная</a></li>
+                <li><a href="/products">Товары</a></li>
+                <li><a href="/bundles">Наборы</a></li>
+                <li><a href="/cart">Корзина</a></li>
+                <li><a href="/orders">Заказы</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main class="container">
+        <h1>Корзина покупок</h1>
+
+        <div id="cart-content">
+            <div class="spinner"></div>
+        </div>
+
+        <div id="empty-cart" style="display: none; text-align: center; padding: 3rem;">
+            <h2>Ваша корзина пуста</h2>
+            <p>Добавьте товары из каталога, чтобы сделать заказ</p>
+            <a href="/products" class="btn btn-primary">Перейти к товарам</a>
+        </div>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2024 E-Commerce Store. Все права защищены.</p>
+            <p>Демонстрация паттернов: Адаптер, Декоратор, Компоновщик</p>
+        </div>
+    </footer>
+
+    <script>
+        let cart = [];
+
+        // Загрузка корзины
+        function loadCart() {
+            try {
+                const cartData = localStorage.getItem('cart');
+                cart = cartData ? JSON.parse(cartData) : [];
+                displayCart();
+            } catch (error) {
+                console.error('Error loading cart:', error);
+                cart = [];
+                displayCart();
+            }
+        }
+
+        // Отображение корзины
+        function displayCart() {
+            const cartContent = document.getElementById('cart-content');
+            const emptyCart = document.getElementById('empty-cart');
+
+            if (cart.length === 0) {
+                cartContent.style.display = 'none';
+                emptyCart.style.display = 'block';
+                return;
+            }
+
+            emptyCart.style.display = 'none';
+            cartContent.style.display = 'block';
+
+            let html = `
+                <div class="card">
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <thead>
+                            <tr style="border-bottom: 2px solid #dee2e6;">
+                                <th style="text-align: left; padding: 1rem;">Товар</th>
+                                <th style="text-align: center; padding: 1rem;">Количество</th>
+                                <th style="text-align: right; padding: 1rem;">Цена</th>
+                                <th style="text-align: right; padding: 1rem;">Сумма</th>
+                                <th style="text-align: center; padding: 1rem;">Действия</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+
+            let totalAmount = 0;
+
+            cart.forEach((item, index) => {
+    // Используем basePrice и finalPrice, которые теперь должны быть установлены
+    const basePrice = item.basePrice || 0;
+    const itemTotal = item.finalPrice || basePrice * item.quantity;
+    totalAmount += itemTotal;
+
+    html += `
+        <tr style="border-bottom: 1px solid #dee2e6;">
+            <td style="padding: 1rem;">
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <div>
+                        <strong>${item.productName}</strong>
+                        <div style="font-size: 0.9rem; color: #666;">
+                            Цена: $${basePrice.toFixed(2)}
+                            ${item.isFromBundle ? `<br><small>Из набора: ${item.bundleName}</small>` : ''}
+                        </div>
+                        ${item.decorators && item.decorators.length > 0 ? `
+                            <div style="font-size: 0.8rem; color: #28a745; margin-top: 0.5rem;">
+                                <strong>Доп. услуги:</strong><br>
+                                ${item.decorators.map(decorator => `• ${decorator}`).join('<br>')}
+                                ${item.personalizationText ? `<br>• Персонализация: "${item.personalizationText}"` : ''}
+                            </div>
+                        ` : ''}
+                    </div>
+                </div>
+            </td>
+            <td style="text-align: center; padding: 1rem;">
+                <div style="display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+                    <button class="btn btn-sm btn-outline" onclick="updateQuantity(${index}, -1)">-</button>
+                    <span style="min-width: 30px; text-align: center;">${item.quantity}</span>
+                    <button class="btn btn-sm btn-outline" onclick="updateQuantity(${index}, 1)">+</button>
+                </div>
+            </td>
+            <td style="text-align: right; padding: 1rem;">
+                $${basePrice.toFixed(2)}
+            </td>
+            <td style="text-align: right; padding: 1rem;">
+                $${itemTotal.toFixed(2)}
+            </td>
+            <td style="text-align: center; padding: 1rem;">
+                <button class="btn btn-danger btn-sm" onclick="removeFromCart(${index})">
+                    Удалить
+                </button>
+            </td>
+        </tr>
+    `;
+});
+
+            html += `
+                        </tbody>
+                        <tfoot>
+                            <tr style="border-top: 2px solid #dee2e6;">
+                                <td colspan="3" style="text-align: right; padding: 1rem; font-weight: bold;">
+                                    Итого:
+                                </td>
+                                <td style="text-align: right; padding: 1rem; font-weight: bold; font-size: 1.2rem;">
+                                    $${totalAmount.toFixed(2)}
+                                </td>
+                                <td style="text-align: center; padding: 1rem;">
+                                    <button class="btn btn-success" onclick="proceedToCheckout()">
+                                        Оформить заказ
+                                    </button>
+                                </td>
+                            </tr>
+                        </tfoot>
+                    </table>
+
+                    <div style="margin-top: 2rem; display: flex; justify-content: space-between;">
+                        <a href="/products" class="btn btn-outline">
+                            ← Продолжить покупки
+                        </a>
+                        <button class="btn btn-warning" onclick="clearCart()">
+                            Очистить корзину
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            cartContent.innerHTML = html;
+        }
+
+        // Обновление количества
+        function updateQuantity(index, change) {
+            const item = cart[index];
+            const newQuantity = item.quantity + change;
+
+            if (newQuantity < 1) {
+                removeFromCart(index);
+                return;
+            }
+
+            const basePrice = item.basePrice || 0;
+
+            // Стоимость услуг остается фиксированной (не зависит от количества)
+            let decoratorsCost = 0;
+            if (item.decorators && item.decorators.length > 0) {
+                const decoratorCosts = {
+                    'Gift Wrap': 5.00,
+                    'Express Shipping': 15.00,
+                    'Personalization': 10.00,
+                    'Insurance': 7.50
+                };
+
+                item.decorators.forEach(decoratorName => {
+                    decoratorsCost += decoratorCosts[decoratorName] || 0;
+                });
+            }
+
+            item.quantity = newQuantity;
+            item.finalPrice = (basePrice * newQuantity) + decoratorsCost;
+
+            saveCart();
+            displayCart();
+            showNotification('Количество обновлено', 'success');
+        }
+
+        // Удаление из корзины
+        function removeFromCart(index) {
+            if (confirm('Вы уверены, что хотите удалить этот товар из корзины?')) {
+                cart.splice(index, 1);
+                saveCart();
+                displayCart();
+                showNotification('Товар удален из корзины', 'success');
+            }
+        }
+
+        // Очистка корзины
+        function clearCart() {
+            if (confirm('Вы уверены, что хотите очистить всю корзину?')) {
+                cart = [];
+                saveCart();
+                displayCart();
+                showNotification('Корзина очищена', 'success');
+            }
+        }
+
+        // Сохранение корзины
+        function saveCart() {
+            localStorage.setItem('cart', JSON.stringify(cart));
+        }
+
+        // Переход к оформлению заказа
+        function proceedToCheckout() {
+            if (cart.length === 0) {
+                showNotification('Корзина пуста', 'error');
+                return;
+            }
+
+            // Проверяем, есть ли товары с услугами для правильного расчета
+            const processedCart = cart.map(item => {
+                // Если у товара нет finalPrice (старая версия корзины), пересчитываем
+                if (!item.finalPrice) {
+                    const baseTotal = item.basePrice * item.quantity;
+                    let decoratorsCost = 0;
+
+                    if (item.decorators && item.decorators.length > 0) {
+                        const decoratorCosts = {
+                            'Gift Wrap': 5.00,
+                            'Express Shipping': 15.00,
+                            'Personalization': 10.00,
+                            'Insurance': 7.50
+                        };
+
+                        item.decorators.forEach(decoratorName => {
+                            decoratorsCost += decoratorCosts[decoratorName] || 0;
+                        });
+                    }
+
+                    item.finalPrice = baseTotal + decoratorsCost;
+                }
+                return item;
+            });
+
+            // Сохраняем обновленную корзину
+            cart = processedCart;
+            saveCart();
+
+            // Переходим к оформлению заказа
+            window.location.href = '/checkout';
+        }
+
+        // Загрузка при открытии страницы
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('Cart page loaded');
+            loadCart();
+        });
+    </script>
+</body>
+</html>

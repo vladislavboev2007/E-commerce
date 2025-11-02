@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Товар - E-Commerce Store</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <script src="/static/js/common.js"></script>
+</head>
+<body>
+    <header>
+        <nav class="container">
+            <div class="logo">E-Store</div>
+            <ul class="nav-links">
+                <li><a href="/">Главная</a></li>
+                <li><a href="/products">Товары</a></li>
+                <li><a href="/bundles">Наборы</a></li>
+                <li><a href="/cart">Корзина</a></li>
+                <li><a href="/orders">Заказы</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main class="container">
+        <div id="product-details">
+            <div class="spinner"></div>
+        </div>
+
+        <div class="card" style="margin-top: 2rem;">
+            <h2>Дополнительные услуги (Декораторы)</h2>
+            <div id="decorators-container">
+                <div class="spinner"></div>
+            </div>
+
+            <div id="price-calculation" style="margin-top: 2rem; padding: 1rem; background: #f8f9fa; border-radius: 5px;">
+            <h3>Итоговая стоимость</h3>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <p id="base-price">Стоимость товаров: $0</p>
+                    <p id="decorators-price">Дополнительные услуги: $0</p>
+                    <p id="final-price" style="font-size: 1.5rem; font-weight: bold; color: #28a745;">Итого: $0</p>
+                </div>
+                <button class="btn btn-success" onclick="addToCartWithDecorators()" style="font-size: 1.2rem;">
+                    Добавить в корзину
+                </button>
+            </div>
+        </div>
+        </div>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2024 E-Commerce Store. Все права защищены.</p>
+            <p>Демонстрация паттернов: Адаптер, Декоратор, Компоновщик</p>
+        </div>
+    </footer>
+
+    <script>
+        let currentProduct = null;
+        let selectedDecorators = [];
+        let personalizationText = '';
+
+        // Загрузка информации о товаре
+        async function loadProduct() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const productId = urlParams.get('id');
+
+            if (!productId) {
+                window.location.href = '/products';
+                return;
+            }
+
+            try {
+                const products = await apiCall('/products/');
+                currentProduct = products.find(p => p.id == productId);
+
+                if (!currentProduct) {
+                    throw new Error('Product not found');
+                }
+
+                displayProductDetails();
+                loadDecorators();
+                // Инициализируем расчет цены при загрузке
+                updatePriceCalculation();
+            } catch (error) {
+                console.error('Failed to load product:', error);
+                showNotification('Товар не найден', 'error');
+            }
+        }
+
+        // Отображение деталей товара
+        function displayProductDetails() {
+            const container = document.getElementById('product-details');
+
+            container.innerHTML = `
+                <div class="card">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+                        <div>
+                            <h1>${currentProduct.name}</h1>
+                            <p class="price" style="font-size: 2rem;">$${currentProduct.price}</p>
+                            <p style="color: #666; margin: 1rem 0;">Категория: ${currentProduct.category_name}</p>
+                            <p style="margin: 1rem 0;">${currentProduct.description}</p>
+                        </div>
+                        <div style="background: #f8f9fa; padding: 2rem; border-radius: 10px;">
+                            <h3>Быстрый заказ</h3>
+                            <div class="form-group">
+                                <label>Количество:</label>
+                                <input type="number" id="quantity" value="1" min="1" style="width: 100px;">
+                            </div>
+                            <button class="btn btn-success" onclick="addToCartSimple()" style="margin-top: 1rem;">
+                                Добавить в корзину (без услуг)
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            setupQuantityListener();
+        }
+
+        // Загрузка доступных декораторов
+        async function loadDecorators() {
+            try {
+                const decorators = await apiCall('/decorators/');
+                const container = document.getElementById('decorators-container');
+
+                container.innerHTML = '';
+
+                decorators.forEach(decorator => {
+                    const decoratorHTML = `
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="decorator-${decorator.id}"
+                                   value="${decorator.name}"
+                                   onchange="toggleDecorator('${decorator.name}', this.checked)">
+                            <label for="decorator-${decorator.id}">
+                                ${decorator.name} - +$${parseFloat(decorator.cost).toFixed(2)}
+                            </label>
+                        </div>
+                    `;
+                    container.innerHTML += decoratorHTML;
+                });
+
+                // Добавляем поле для персонализации
+                container.innerHTML += `
+                    <div class="form-group" style="margin-top: 1rem;">
+                        <label>Текст для персонализации (если выбрана услуга):</label>
+                        <input type="text" id="personalization-text"
+                               placeholder="Введите текст для персонализации"
+                               oninput="updatePersonalizationText(this.value)">
+                    </div>
+                `;
+            } catch (error) {
+                console.error('Failed to load decorators:', error);
+            }
+        }
+
+        // Переключение декораторов
+        function toggleDecorator(name, isChecked) {
+    console.log(`Toggling decorator: ${name}, checked: ${isChecked}`);
+
+    if (isChecked) {
+        if (!selectedDecorators.includes(name)) {
+            selectedDecorators.push(name);
+        }
+    } else {
+        selectedDecorators = selectedDecorators.filter(d => d !== name);
+        if (name === 'Personalization') {
+            personalizationText = '';
+            const personalizationInput = document.getElementById('personalization-text');
+            if (personalizationInput) {
+                personalizationInput.value = '';
+            }
+        }
+    }
+
+    console.log('Selected decorators after toggle:', selectedDecorators);
+    updatePriceCalculation();
+}
+
+        function updatePersonalizationText(text) {
+            personalizationText = text;
+            console.log('Personalization text updated:', personalizationText);
+            updatePriceCalculation();
+        }
+
+        // Добавьте обработчик изменения количества
+        function setupQuantityListener() {
+            const quantityInput = document.getElementById('quantity');
+            if (quantityInput) {
+                quantityInput.addEventListener('input', function() {
+                    console.log('Quantity changed to:', this.value);
+                    updatePriceCalculation();
+                });
+            }
+        }
+
+        // Основная функция расчета цены
+        // Основная функция расчета цены
+        async function updatePriceCalculation() {
+            console.log('=== STARTING PRICE CALCULATION ===');
+            if (!currentProduct) {
+                console.log('No current product');
+                return;
+            }
+
+            const quantity = parseInt(document.getElementById('quantity')?.value) || 1;
+            console.log('Quantity:', quantity);
+            console.log('Selected decorators:', selectedDecorators);
+            console.log('Personalization text:', personalizationText);
+
+            try {
+                const basePrice = parseFloat(currentProduct.price);
+                const baseTotal = basePrice * quantity;
+
+                console.log('Base price per item:', basePrice);
+                console.log('Base total for quantity:', baseTotal);
+
+                // Формируем правильный запрос к API
+                const requestData = {
+                    product_id: currentProduct.id,
+                    name: currentProduct.name,
+                    base_price: basePrice,  // Цена за единицу
+                    quantity: quantity,     // Количество
+                    decorators: selectedDecorators
+                };
+
+                if (selectedDecorators.includes('Personalization') && personalizationText) {
+                    requestData.personalization_text = personalizationText;
+                }
+
+                console.log('Sending to API:', requestData);
+
+                const result = await apiCall('/calculate-price/', {
+                    method: 'POST',
+                    body: JSON.stringify(requestData)
+                });
+
+                console.log('API response:', result);
+
+                if (result) {
+                    document.getElementById('base-price').textContent =
+                        `Стоимость товаров: $${result.base_total.toFixed(2)}`;
+                    document.getElementById('decorators-price').textContent =
+                        `Дополнительные услуги: $${result.decorators_total.toFixed(2)}`;
+                    document.getElementById('final-price').textContent =
+                        `Итого: $${result.final_price.toFixed(2)}`;
+                }
+            } catch (error) {
+                console.error('Failed to calculate price via API:', error);
+                // Fallback расчет на клиенте
+                calculatePriceLocally(quantity);
+            }
+        }
+
+        // Резервный расчет на клиенте
+        function calculatePriceLocally(quantity = 1) {
+            console.log('Using local price calculation');
+            if (!currentProduct) return;
+
+            const basePrice = parseFloat(currentProduct.price);
+            const baseTotal = basePrice * quantity;
+
+            // ФИКСИРОВАННЫЕ стоимости декораторов (не зависят от количества)
+            const decoratorCosts = {
+                'Gift Wrap': 5.00,
+                'Express Shipping': 15.00,
+                'Personalization': 10.00,
+                'Insurance': 7.50
+            };
+
+            let decoratorsTotal = 0;
+            selectedDecorators.forEach(decoratorName => {
+                decoratorsTotal += decoratorCosts[decoratorName] || 0;
+            });
+
+            const finalTotal = baseTotal + decoratorsTotal;
+
+            console.log('Local calculation results:', {
+                baseTotal,
+                decoratorsTotal,
+                finalTotal
+            });
+
+            document.getElementById('base-price').textContent =
+                `Стоимость товаров: $${baseTotal.toFixed(2)}`;
+            document.getElementById('decorators-price').textContent =
+                `Дополнительные услуги: $${decoratorsTotal.toFixed(2)}`;
+            document.getElementById('final-price').textContent =
+                `Итого: $${finalTotal.toFixed(2)}`;
+        }
+
+
+
+        function addToCartSimple() {
+            const quantity = parseInt(document.getElementById('quantity').value) || 1;
+            addToCart(currentProduct.id, quantity);
+        }
+
+        function addToCartWithDecorators() {
+    const quantity = parseInt(document.getElementById('quantity')?.value) || 1;
+    const finalPriceElement = document.getElementById('final-price');
+    const finalPriceText = finalPriceElement.textContent.replace('Итого: $', '');
+    const finalPrice = parseFloat(finalPriceText);
+
+    // Сохраняем информацию о декораторах для этого товара
+    const cartItem = {
+        productId: currentProduct.id,
+        quantity: quantity,
+        decorators: [...selectedDecorators],
+        personalizationText: personalizationText,
+        finalPrice: finalPrice,
+        productName: currentProduct.name,
+        basePrice: parseFloat(currentProduct.price),
+        // Добавляем информацию о стоимости услуг отдельно
+        decoratorsCost: finalPrice - (parseFloat(currentProduct.price) * quantity)
+    };
+
+    let cart = JSON.parse(localStorage.getItem('cart') || '[]');
+    cart.push(cartItem);
+    localStorage.setItem('cart', JSON.stringify(cart));
+
+    showNotification('Товар с дополнительными услугами добавлен в корзину', 'success');
+
+    // Очищаем выбор после добавления
+    setTimeout(() => {
+        selectedDecorators = [];
+        personalizationText = '';
+        document.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
+            checkbox.checked = false;
+        });
+        const personalizationInput = document.getElementById('personalization-text');
+        if (personalizationInput) {
+            personalizationInput.value = '';
+        }
+        updatePriceCalculation();
+    }, 1000);
+}
+
+        function addToCart(productId, quantity = 1) {
+            let cart = JSON.parse(localStorage.getItem('cart') || '[]');
+            const existingItem = cart.find(item => item.productId === productId && !item.decorators);
+
+            if (existingItem) {
+                existingItem.quantity += quantity;
+            } else {
+                cart.push({
+                    productId,
+                    quantity,
+                    productName: currentProduct.name,
+                    basePrice: parseFloat(currentProduct.price)
+                });
+            }
+
+            localStorage.setItem('cart', JSON.stringify(cart));
+            showNotification('Товар добавлен в корзину', 'success');
+        }
+
+        // Загрузка данных при открытии страницы
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('Product page loaded');
+            loadProduct();
+        });
+    </script>
+</body>
+</html>

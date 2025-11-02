@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Наборы - E-Commerce Store</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <script src="/static/js/common.js"></script>
+</head>
+<body>
+    <header>
+        <nav class="container">
+            <div class="logo">E-Store</div>
+            <ul class="nav-links">
+                <li><a href="/">Главная</a></li>
+                <li><a href="/products">Товары</a></li>
+                <li><a href="/bundles" class="active">Наборы</a></li>
+                <li><a href="/cart">Корзина</a></li>
+                <li><a href="/orders">Заказы</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main class="container">
+        <h1 style="margin-bottom: 2rem;">Готовые наборы товаров</h1>
+        <p style="margin-bottom: 2rem; color: #666;">
+            Используем паттерн "Компоновщик" для создания наборов товаров как единого целого
+        </p>
+
+        <div id="bundles-container">
+            <div class="spinner"></div>
+        </div>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2024 E-Commerce Store. Все права защищены.</p>
+            <p>Демонстрация паттернов: Адаптер, Декоратор, Компоновщик</p>
+        </div>
+    </footer>
+
+    <script>
+        // Загрузка наборов товаров
+        async function loadBundles() {
+            try {
+                console.log('Loading bundles...');
+                const bundles = await apiCall('/bundles/');
+                console.log('Bundles loaded:', bundles);
+
+                const container = document.getElementById('bundles-container');
+                container.innerHTML = '';
+
+                if (!bundles.bundles || Object.keys(bundles.bundles).length === 0) {
+                    container.innerHTML = '<p>Наборы не найдены</p>';
+                    return;
+                }
+
+                Object.entries(bundles.bundles).forEach(([bundleKey, bundle]) => {
+                    const bundleCard = `
+                        <div class="card">
+                            <h2>${bundle.name}</h2>
+                            <p style="color: #666; margin: 1rem 0;">${bundle.description}</p>
+                            <div class="price" style="font-size: 1.8rem; margin: 1rem 0;">
+                                $${bundle.total_price}
+                            </div>
+                            <div style="background: #f8f9fa; padding: 1rem; border-radius: 5px; margin: 1rem 0;">
+                                <h4>Состав набора:</h4>
+                                <pre style="white-space: pre-wrap; font-family: inherit;">${bundle.display}</pre>
+                            </div>
+                            <button class="btn btn-success" onclick="addBundleToCart('${bundleKey}')">
+                                Добавить набор в корзину
+                            </button>
+                        </div>
+                    `;
+                    container.innerHTML += bundleCard;
+                });
+            } catch (error) {
+                console.error('Failed to load bundles:', error);
+                const container = document.getElementById('bundles-container');
+                container.innerHTML = '<p>Ошибка загрузки наборов</p>';
+            }
+        }
+
+        // Улучшенная функция добавления набора в корзину
+        async function addBundleToCart(bundleKey) {
+            try {
+                showNotification('Добавляем набор в корзину...', 'info');
+
+                const bundles = await apiCall('/bundles/');
+                const bundle = bundles.bundles[bundleKey];
+
+                if (!bundle) {
+                    showNotification('Набор не найден', 'error');
+                    return;
+                }
+
+                const allProducts = await apiCall('/products/');
+                const bundleItems = getBundleProducts(bundle.name, allProducts);
+
+                if (bundleItems.length === 0) {
+                    showNotification('Не удалось определить состав набора', 'error');
+                    return;
+                }
+
+                let cart = JSON.parse(localStorage.getItem('cart') || '[]');
+
+                // Добавляем каждый товар из набора с информацией о цене
+                bundleItems.forEach(item => {
+                    const existingItem = cart.find(cartItem =>
+                        cartItem.productId == item.id &&
+                        cartItem.bundleName == bundle.name
+                    );
+
+                    if (existingItem) {
+                        existingItem.quantity += 1;
+                        existingItem.finalPrice = existingItem.basePrice * existingItem.quantity;
+                    } else {
+                        cart.push({
+                            productId: item.id,
+                            quantity: 1,
+                            isFromBundle: true,
+                            bundleName: bundle.name,
+                            productName: item.name,
+                            basePrice: parseFloat(item.price),
+                            finalPrice: parseFloat(item.price)
+                        });
+                    }
+                });
+
+                localStorage.setItem('cart', JSON.stringify(cart));
+                showNotification(`Набор "${bundle.name}" добавлен в корзину!`, 'success');
+
+            } catch (error) {
+                console.error('Failed to add bundle to cart:', error);
+                showNotification('Ошибка при добавлении набора в корзину', 'error');
+            }
+        }
+
+        // Функция для определения товаров в наборе
+        function getBundleProducts(bundleName, allProducts) {
+            const bundleConfigs = {
+                'Gaming Computer Bundle': ['Laptop', 'Headphones', 'Smart Watch'],
+                'Office Workspace Bundle': ['Office Desk', 'Office Chair', 'Desk Lamp'],
+                'Casual Outfit Bundle': ['T-Shirt', 'Jeans', 'Sneakers']
+            };
+
+            const productNames = bundleConfigs[bundleName] || [];
+
+            // Фильтруем товары по точному соответствию имен
+            const bundleProducts = allProducts.filter(product =>
+                productNames.includes(product.name)
+            );
+
+            console.log(`Bundle ${bundleName} products:`, bundleProducts);
+            return bundleProducts;
+        }
+
+        // Загрузка данных при открытии страницы
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('Bundles page loaded');
+            loadBundles();
+        });
+    </script>
+</body>
+</html>

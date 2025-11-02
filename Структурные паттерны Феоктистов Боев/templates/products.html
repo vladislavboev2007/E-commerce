@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Товары - E-Commerce Store</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <script src="/static/js/common.js"></script>
+</head>
+<body>
+    <header>
+        <nav class="container">
+            <div class="logo">E-Store</div>
+            <ul class="nav-links">
+                <li><a href="/">Главная</a></li>
+                <li><a href="/products" class="active">Товары</a></li>
+                <li><a href="/bundles">Наборы</a></li>
+                <li><a href="/cart">Корзина</a></li>
+                <li><a href="/orders">Заказы</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main class="container">
+        <div style="display: flex; justify-content: between; align-items: center; margin-bottom: 2rem;">
+            <h1>Каталог товаров</h1>
+            <div style="display: flex; gap: 1rem;">
+                <select id="category-filter" onchange="filterProducts()">
+                    <option value="">Все категории</option>
+                </select>
+                <input type="text" id="search-input" placeholder="Поиск товаров..." style="padding: 0.8rem;">
+                <button class="btn" onclick="searchProducts()">Поиск</button>
+            </div>
+        </div>
+
+        <div id="products-container" class="grid grid-3">
+            <div class="spinner"></div>
+        </div>
+
+        <div id="pagination" style="display: flex; justify-content: center; gap: 1rem; margin-top: 2rem;">
+            <!-- Пагинация будет генерироваться динамически -->
+        </div>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2024 E-Commerce Store. Все права защищены.</p>
+            <p>Демонстрация паттернов: Адаптер, Декоратор, Компоновщик</p>
+        </div>
+    </footer>
+
+    <script>
+        // Добавьте эту функцию - она отсутствовала!
+        async function apiCall(endpoint, options = {}) {
+            try {
+                console.log(`API Call: ${API_BASE}${endpoint}`);
+                const response = await fetch(`${API_BASE}${endpoint}`, {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...options.headers
+                    },
+                    ...options
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                console.log(`API Response from ${endpoint}:`, data);
+                return data;
+            } catch (error) {
+                console.error('API call failed:', error);
+                showNotification('Ошибка при загрузке данных', 'error');
+                throw error;
+            }
+        }
+
+        // Также добавьте функцию showNotification
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                padding: 1rem 1.5rem;
+                background: ${type === 'error' ? '#dc3545' : type === 'success' ? '#28a745' : '#17a2b8'};
+                color: white;
+                border-radius: 5px;
+                box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+                z-index: 1000;
+                animation: slideIn 0.3s ease;
+            `;
+            notification.textContent = message;
+
+            document.body.appendChild(notification);
+
+            setTimeout(() => {
+                notification.style.animation = 'slideOut 0.3s ease';
+                setTimeout(() => {
+                    if (document.body.contains(notification)) {
+                        document.body.removeChild(notification);
+                    }
+                }, 300);
+            }, 3000);
+        }
+
+        let allProducts = [];
+        let currentPage = 1;
+        const productsPerPage = 9;
+
+        // Загрузка всех товаров
+        async function loadAllProducts() {
+            try {
+                console.log('Loading all products...');
+                const products = await apiCall('/products/');
+                console.log('All products loaded:', products);
+
+                allProducts = products;
+                displayProducts(products);
+                loadCategoryFilter(products);
+            } catch (error) {
+                console.error('Failed to load products:', error);
+                const container = document.getElementById('products-container');
+                container.innerHTML = '<p>Ошибка загрузки товаров</p>';
+            }
+        }
+
+        // Загрузка фильтра категорий
+        function loadCategoryFilter(products) {
+            const categories = [...new Set(products.map(p => p.category_name))];
+            const filter = document.getElementById('category-filter');
+
+            categories.forEach(category => {
+                const option = document.createElement('option');
+                option.value = category;
+                option.textContent = category;
+                filter.appendChild(option);
+            });
+        }
+
+        // Отображение товаров
+        function displayProducts(products) {
+            const container = document.getElementById('products-container');
+            const startIndex = (currentPage - 1) * productsPerPage;
+            const paginatedProducts = products.slice(startIndex, startIndex + productsPerPage);
+
+            container.innerHTML = '';
+
+            if (paginatedProducts.length === 0) {
+                container.innerHTML = '<p style="text-align: center; grid-column: 1 / -1;">Товары не найдены</p>';
+                return;
+            }
+
+            paginatedProducts.forEach(product => {
+                const productCard = `
+                    <div class="card">
+                        <div style="height: 120px; background: #f8f9fa; display: flex; align-items: center; justify-content: center; margin-bottom: 1rem; border-radius: 8px;">
+                            <span style="font-size: 2rem;">${getProductIcon(product.category_name)}</span>
+                        </div>
+                        <h3>${product.name}</h3>
+                        <p class="price">$${product.price}</p>
+                        <p style="color: #666; margin: 0.5rem 0;">${product.category_name}</p>
+                        <p style="margin: 0.5rem 0; font-size: 0.9rem; color: #888;">${product.description}</p>
+                        <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
+                            <button class="btn" onclick="viewProduct(${product.id})">Подробнее</button>
+                            <button class="btn btn-success" onclick="addToCart(${product.id})">В корзину</button>
+                        </div>
+                    </div>
+                `;
+                container.innerHTML += productCard;
+            });
+
+            setupPagination(products.length);
+        }
+
+        // Функция для получения иконки товара
+        function getProductIcon(category) {
+            const icons = {
+                'Electronics': '📱',
+                'Clothing': '👕',
+                'Home Appliances': '🏠'
+            };
+            return icons[category] || '📦';
+        }
+
+        // Фильтрация товаров
+        function filterProducts() {
+            const categoryFilter = document.getElementById('category-filter').value;
+            const searchTerm = document.getElementById('search-input').value.toLowerCase();
+
+            let filteredProducts = allProducts;
+
+            if (categoryFilter) {
+                filteredProducts = filteredProducts.filter(p => p.category_name === categoryFilter);
+            }
+
+            if (searchTerm) {
+                filteredProducts = filteredProducts.filter(p =>
+                    p.name.toLowerCase().includes(searchTerm) ||
+                    p.description.toLowerCase().includes(searchTerm)
+                );
+            }
+
+            currentPage = 1;
+            displayProducts(filteredProducts);
+        }
+
+        function searchProducts() {
+            filterProducts();
+        }
+
+        // Пагинация
+        function setupPagination(totalProducts) {
+            const totalPages = Math.ceil(totalProducts / productsPerPage);
+            const pagination = document.getElementById('pagination');
+
+            pagination.innerHTML = '';
+
+            for (let i = 1; i <= totalPages; i++) {
+                const button = document.createElement('button');
+                button.textContent = i;
+                button.className = `btn ${i === currentPage ? '' : 'btn-secondary'}`;
+                button.onclick = () => {
+                    currentPage = i;
+                    displayProducts(allProducts);
+                };
+                pagination.appendChild(button);
+            }
+        }
+
+        function viewProduct(productId) {
+            window.location.href = `/product?id=${productId}`;
+        }
+
+        function addToCart(productId) {
+            const product = allProducts.find(p => p.id == productId);
+            if (!product) {
+                showNotification('Товар не найден', 'error');
+                return;
+            }
+
+            let cart = JSON.parse(localStorage.getItem('cart') || '[]');
+            const existingItem = cart.find(item => item.productId == productId && !item.decorators);
+
+            if (existingItem) {
+                existingItem.quantity += 1;
+                existingItem.finalPrice = existingItem.basePrice * existingItem.quantity;
+            } else {
+                cart.push({
+                    productId: productId,
+                    quantity: 1,
+                    productName: product.name,
+                    basePrice: parseFloat(product.price),
+                    finalPrice: parseFloat(product.price)
+                });
+            }
+
+            localStorage.setItem('cart', JSON.stringify(cart));
+            showNotification('Товар добавлен в корзину', 'success');
+        }
+
+        // Загрузка данных при открытии страницы
+        document.addEventListener('DOMContentLoaded', () => {
+            loadAllProducts();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Мои заказы - E-Commerce Store</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <script src="/static/js/common.js"></script>
+</head>
+<body>
+    <header>
+        <nav class="container">
+            <div class="logo">E-Store</div>
+            <ul class="nav-links">
+                <li><a href="/">Главная</a></li>
+                <li><a href="/products">Товары</a></li>
+                <li><a href="/bundles">Наборы</a></li>
+                <li><a href="/cart">Корзина</a></li>
+                <li><a href="/orders" class="active">Заказы</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main class="container">
+        <h1>Мои заказы</h1>
+        <div id="orders-container">
+            <div class="spinner"></div>
+        </div>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2024 E-Commerce Store. Все права защищены.</p>
+        </div>
+    </footer>
+
+    <script>
+    async function loadOrders() {
+        try {
+            console.log('Loading orders...');
+            const orders = await apiCall('/user-orders/');
+            console.log('Orders received:', orders);
+
+            const container = document.getElementById('orders-container');
+            container.innerHTML = '';
+
+            if (!orders || orders.length === 0) {
+                container.innerHTML = `
+                    <div class="card" style="text-align: center; padding: 2rem;">
+                        <h3>Заказы не найдены</h3>
+                        <p>У вас пока нет оформленных заказов</p>
+                        <a href="/products" class="btn">Перейти к товарам</a>
+                    </div>
+                `;
+                return;
+            }
+
+            orders.forEach(order => {
+                const orderCard = `
+                    <div class="card" style="margin-bottom: 1.5rem;">
+                        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
+                            <div>
+                                <h3>Заказ #${order.id}</h3>
+                                <p style="color: #666; margin: 0.5rem 0;">
+                                    <strong>Дата:</strong> ${order.order_date}
+                                </p>
+                                <p style="color: #666; margin: 0.5rem 0;">
+                                    <strong>Статус:</strong>
+                                    <span style="
+                                        padding: 0.3rem 0.8rem;
+                                        border-radius: 15px;
+                                        font-size: 0.9rem;
+                                        background: ${getStatusColor(order.status)};
+                                        color: white;
+                                    ">${order.status}</span>
+                                </p>
+                            </div>
+                            <div style="text-align: right;">
+                                <div class="price" style="font-size: 1.5rem;">$${order.total_amount.toFixed(2)}</div>
+                            </div>
+                        </div>
+
+                        ${order.items && order.items.length > 0 ? `
+                            <div style="margin: 1rem 0;">
+                                <h4>Состав заказа:</h4>
+                                ${order.items.map(item => `
+                                    <div style="display: flex; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid #eee;">
+                                        <span>${item.name} × ${item.quantity}</span>
+                                        <span>$${(item.price * item.quantity).toFixed(2)}</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        ` : ''}
+
+                        ${order.decorators && order.decorators.length > 0 ? `
+                            <div style="margin: 1rem 0;">
+                                <h4>Дополнительные услуги:</h4>
+                                <ul style="margin: 0.5rem 0; padding-left: 1rem;">
+                                    ${order.decorators.map(decorator => `<li>${decorator}</li>`).join('')}
+                                </ul>
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+                container.innerHTML += orderCard;
+            });
+
+        } catch (error) {
+            console.error('Failed to load orders:', error);
+            const container = document.getElementById('orders-container');
+            container.innerHTML = `
+                <div class="card" style="text-align: center; padding: 2rem;">
+                    <h3>Ошибка загрузки заказов</h3>
+                    <p>Попробуйте обновить страницу</p>
+                    <button class="btn" onclick="loadOrders()">Попробовать снова</button>
+                </div>
+            `;
+        }
+    }
+
+    function getStatusColor(status) {
+        const colors = {
+            'В обработке': '#ffc107',
+            'Доставляется': '#17a2b8',
+            'Доставлен': '#28a745',
+            'Неизвестно': '#6c757d'
+        };
+        return colors[status] || '#6c757d';
+    }
+
+    // Загрузка данных при открытии страницы
+    document.addEventListener('DOMContentLoaded', () => {
+        console.log('Orders page loaded');
+        loadOrders();
+    });
+</script>
+</body>
+</html>

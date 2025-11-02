@@ -1,0 +1,65 @@
+-- Создание таблицы category
+CREATE TABLE category (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL
+);
+
+-- Создание таблицы product
+CREATE TABLE product (
+    id SERIAL PRIMARY KEY,
+    category_id INTEGER NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    price NUMERIC(10,2) NOT NULL,
+    description TEXT,
+    CONSTRAINT fk_product_category 
+        FOREIGN KEY (category_id) 
+        REFERENCES category(id)
+);
+
+-- Создание таблицы decorators
+CREATE TABLE decorators (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    cost NUMERIC(10,2) NOT NULL
+);
+
+-- Создание таблицы orders
+CREATE TABLE orders (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL,
+    total_amount NUMERIC(10,2) NOT NULL DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Создание таблицы order_items
+CREATE TABLE order_items (
+    id SERIAL PRIMARY KEY,
+    order_id INTEGER NOT NULL,
+    product_id INTEGER NOT NULL,
+    quantity SMALLINT NOT NULL DEFAULT 1,
+    subtotal NUMERIC(10,2) NOT NULL,
+    CONSTRAINT fk_order_items_order 
+        FOREIGN KEY (order_id) 
+        REFERENCES orders(id),
+    CONSTRAINT fk_order_items_product 
+        FOREIGN KEY (product_id) 
+        REFERENCES product(id)
+);
+
+-- Создание таблицы order_decorators
+CREATE TABLE order_decorators (
+    id SERIAL PRIMARY KEY,
+    order_id INTEGER NOT NULL,
+    decorator_id INTEGER NOT NULL,
+    CONSTRAINT fk_order_decorators_order 
+        FOREIGN KEY (order_id) 
+        REFERENCES orders(id),
+    CONSTRAINT fk_order_decorators_decorator 
+        FOREIGN KEY (decorator_id) 
+        REFERENCES decorators(id)
+);
+
+UPDATE decorators SET name = 'Gift Wrap' WHERE name = 'gift_wrap';
+UPDATE decorators SET name = 'Express Shipping' WHERE name = 'express_shipping';
+UPDATE decorators SET name = 'Personalization' WHERE name = 'personalization';
+UPDATE decorators SET name = 'Insurance' WHERE name = 'insurance';

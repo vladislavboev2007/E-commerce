@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Оформление заказа - E-Commerce Store</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <!-- Подключаем общие функции -->
+    <script src="/static/js/common.js"></script>
+</head>
+<body>
+    <header>
+        <nav class="container">
+            <div class="logo">E-Store</div>
+            <ul class="nav-links">
+                <li><a href="/">Главная</a></li>
+                <li><a href="/products">Товары</a></li>
+                <li><a href="/bundles">Наборы</a></li>
+                <li><a href="/cart">Корзина</a></li>
+                <li><a href="/orders">Заказы</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main class="container">
+        <h1>Оформление заказа</h1>
+
+        <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 2rem;">
+            <!-- Форма заказа -->
+            <div class="card">
+                <h2>Информация для заказа</h2>
+
+                <div class="form-group">
+                    <label>Имя и фамилия:</label>
+                    <input type="text" id="customer-name" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Email:</label>
+                    <input type="email" id="customer-email" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Адрес доставки:</label>
+                    <textarea id="shipping-address" rows="3" required></textarea>
+                </div>
+
+                <h3 style="margin-top: 2rem;">Способ оплаты</h3>
+                <div class="form-group">
+                    <select id="payment-provider">
+                        <option value="stripe">Stripe</option>
+                        <option value="paypal">PayPal</option>
+                    </select>
+                </div>
+
+                <h3 style="margin-top: 2rem;">Служба доставки</h3>
+                <div class="form-group">
+                    <select id="delivery-provider">
+                        <option value="dhl">DHL</option>
+                        <option value="fedex">FedEx</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Сводка заказа -->
+            <div class="card">
+                <h2>Ваш заказ</h2>
+                <div id="order-summary">
+                    <!-- Сводка будет заполнена динамически -->
+                </div>
+                <div style="border-top: 1px solid #ddd; margin-top: 1rem; padding-top: 1rem;">
+                    <div style="display: flex; justify-content: space-between; font-size: 1.2rem; font-weight: bold;">
+                        <span>Итого:</span>
+                        <span id="order-total">$0</span>
+                    </div>
+                </div>
+                <button class="btn btn-success" onclick="placeOrder()" style="width: 100%; margin-top: 1rem; font-size: 1.2rem;">
+                    Подтвердить заказ
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2024 E-Commerce Store. Все права защищены.</p>
+            <p>Демонстрация паттернов: Адаптер, Декоратор, Компоновщик</p>
+        </div>
+    </footer>
+
+    <script>
+        let orderTotal = 0;
+
+        // В checkout.html обновите loadOrderSummary
+    async function loadOrderSummary() {
+    const cart = JSON.parse(localStorage.getItem('cart') || '[]');
+    const summary = document.getElementById('order-summary');
+
+    if (cart.length === 0) {
+        window.location.href = '/cart';
+        return;
+    }
+
+    summary.innerHTML = '<div class="spinner"></div>';
+    orderTotal = 0;
+
+    try {
+        const allProducts = await apiCall('/products/');
+
+        summary.innerHTML = '';
+        orderTotal = 0;
+
+        for (const item of cart) {
+            const product = allProducts.find(p => p.id == item.productId);
+
+            if (product) {
+                // Базовая стоимость товара
+                const basePrice = parseFloat(product.price);
+                const baseTotal = basePrice * item.quantity;
+
+                // Стоимость дополнительных услуг (если есть)
+                let decoratorsCost = 0;
+                if (item.decorators && item.decorators.length > 0) {
+                    // Для каждого товара рассчитываем стоимость декораторов
+                    const decoratorRequest = {
+                        product_id: item.productId,
+                        name: product.name,
+                        base_price: baseTotal,
+                        description: product.description,
+                        decorators: item.decorators || [],
+                        personalization_text: item.personalizationText || ''
+                    };
+
+                    try {
+                        const priceResult = await apiCall('/calculate-price/', {
+                            method: 'POST',
+                            body: JSON.stringify(decoratorRequest)
+                        });
+                        decoratorsCost = priceResult.final_price - baseTotal;
+                    } catch (error) {
+                        console.error('Error calculating decorators cost:', error);
+                    }
+                }
+
+                const itemTotal = baseTotal + decoratorsCost;
+                orderTotal += itemTotal;
+
+                summary.innerHTML += `
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem; padding-bottom: 0.5rem; border-bottom: 1px solid #eee;">
+                        <div>
+                            <strong>${product.name}</strong>
+                            <div style="font-size: 0.9rem; color: #666;">
+                                x${item.quantity} @ $${basePrice.toFixed(2)}
+                                ${item.decorators && item.decorators.length > 0 ?
+                                    `<br><small>Доп. услуги: $${decoratorsCost.toFixed(2)} (${item.decorators.join(', ')})</small>` :
+                                    ''
+                                }
+                                ${item.personalizationText ?
+                                    `<br><small>Персонализация: "${item.personalizationText}"</small>` :
+                                    ''
+                                }
+                            </div>
+                        </div>
+                        <span>$${itemTotal.toFixed(2)}</span>
+                    </div>
+                `;
+            }
+        }
+
+        document.getElementById('order-total').textContent = `$${orderTotal.toFixed(2)}`;
+
+    } catch (error) {
+        console.error('Failed to load products for order summary:', error);
+        summary.innerHTML = '<p>Ошибка загрузки данных товаров</p>';
+    }
+}
+
+        // Оформление заказа - ОБЯЗАТЕЛЬНО ОБЪЯВЛЯЕМ ЭТУ ФУНКЦИЮ
+        async function placeOrder() {
+            const customerName = document.getElementById('customer-name').value;
+            const customerEmail = document.getElementById('customer-email').value;
+            const shippingAddress = document.getElementById('shipping-address').value;
+            const paymentProvider = document.getElementById('payment-provider').value;
+            const deliveryProvider = document.getElementById('delivery-provider').value;
+
+            if (!customerName || !customerEmail || !shippingAddress) {
+                showNotification('Пожалуйста, заполните все обязательные поля', 'error');
+                return;
+            }
+
+            try {
+                showNotification('Оформление заказа...', 'info');
+
+                // Получаем корзину
+                const cart = JSON.parse(localStorage.getItem('cart') || '[]');
+
+                if (cart.length === 0) {
+                    showNotification('Корзина пуста', 'error');
+                    return;
+                }
+
+                // Загружаем актуальные цены товаров
+                const allProducts = await apiCall('/products/');
+
+                // Подготавливаем данные для заказа с реальными ценами
+                const orderItems = [];
+                let calculatedTotal = 0;
+
+                for (const item of cart) {
+                    const product = allProducts.find(p => p.id == item.productId);
+                    if (product) {
+                        const itemPrice = parseFloat(product.price);
+                        const subtotal = itemPrice * item.quantity;
+                        calculatedTotal += subtotal;
+
+                        orderItems.push({
+                            product_id: item.productId,
+                            quantity: item.quantity,
+                            subtotal: subtotal
+                        });
+                    }
+                }
+
+                // Создание заказа
+                const orderData = {
+                    user_id: 1,  // Должен совпадать с тем, что в get_user_orders
+                    items: orderItems,
+                    decorators: cart.flatMap(item => item.decorators || [])
+                };
+
+                console.log('Creating order with data:', orderData);
+
+                const order = await apiCall('/orders/', {
+                    method: 'POST',
+                    body: JSON.stringify(orderData)
+                });
+
+                showNotification('Заказ создан! Обработка платежа...', 'success');
+
+                // Используем реальную сумму заказа
+                const orderAmount = order.final_amount || calculatedTotal;
+
+                // Обработка платежа через адаптер
+                const paymentResult = await apiCall('/payment/process/', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        order_id: order.order_id,
+                        payment_provider: paymentProvider,
+                        amount: orderAmount
+                    })
+                });
+
+                showNotification('Платеж обработан! Организация доставки...', 'success');
+
+                // Организация доставки через адаптер
+                const deliveryResult = await apiCall('/delivery/schedule/', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        order_id: order.order_id,
+                        delivery_provider: deliveryProvider,
+                        shipping_address: {
+                            name: customerName,
+                            address: shippingAddress
+                        }
+                    })
+                });
+
+                // Очистка корзины
+                localStorage.removeItem('cart');
+                showNotification('Заказ успешно оформлен!', 'success');
+
+
+
+                // Перенаправление на страницу заказов
+                setTimeout(() => {
+                    window.location.href = '/orders';
+                }, 2000);
+
+            } catch (error) {
+                console.error('Failed to place order:', error);
+                showNotification('Ошибка при оформлении заказа: ' + error.message, 'error');
+            }
+        }
+
+        // Загрузка данных при открытии страницы
+        document.addEventListener('DOMContentLoaded', () => {
+            loadOrderSummary();
+        });
+    </script>
+</body>
+</html>
