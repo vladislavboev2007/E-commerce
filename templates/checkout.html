@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Оформление заказа - E-Commerce Store</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <script src="/static/js/common.js"></script>
+</head>
+<body>
+    <header>
+        <nav class="container">
+            <div class="logo">E-Store</div>
+            <ul class="nav-links">
+                <li><a href="/">Главная</a></li>
+                <li><a href="/products">Товары</a></li>
+                <li><a href="/bundles">Наборы</a></li>
+                <li><a href="/cart">Корзина</a></li>
+                <li><a href="/orders">Заказы</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main class="container">
+        <h1>Оформление заказа</h1>
+
+        <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 2rem;">
+            <!-- Форма заказа -->
+            <div class="card">
+                <h2>Информация для заказа</h2>
+
+                <div class="form-group">
+                    <label>Имя и фамилия:</label>
+                    <input type="text" id="customer-name" placeholder="Иван Иванов" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Email:</label>
+                    <input type="email" id="customer-email" placeholder="ivan@example.com" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Телефон:</label>
+                    <input type="tel" id="customer-phone" placeholder="+7 (999) 123-45-67" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Адрес доставки:</label>
+                    <textarea id="shipping-address" rows="3" placeholder="г. Москва, ул. Примерная, д. 1, кв. 1" required></textarea>
+                </div>
+
+                <h3 style="margin-top: 2rem;">Способ оплаты</h3>
+                <div class="form-group">
+                    <select id="payment-provider">
+                        <option value="yookassa">ЮKassa</option>
+                        <option value="sber">Сбер</option>
+                    </select>
+                </div>
+
+                <h3 style="margin-top: 2rem;">Служба доставки</h3>
+                <div class="form-group">
+                    <select id="delivery-provider">
+                        <option value="cdek">СДЭК</option>
+                        <option value="yandex">Яндекс.Маркет</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Сводка заказа -->
+            <div class="card">
+                <h2>Ваш заказ</h2>
+                <div id="order-summary">
+                    <!-- Сводка будет заполнена динамически -->
+                    <div class="spinner"></div>
+                </div>
+
+                <div style="border-top: 2px solid #dee2e6; margin-top: 1.5rem; padding-top: 1.5rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 1.2rem; font-weight: bold;">Итого к оплате:</span>
+                        <span id="order-total" style="font-size: 1.5rem; font-weight: bold; color: #28a745;">0₽</span>
+                    </div>
+                </div>
+
+                <button class="btn btn-success" onclick="placeOrder()" style="width: 100%; margin-top: 1.5rem; padding: 1rem; font-size: 1.2rem;">
+                    Подтвердить заказ
+                </button>
+
+                <div style="margin-top: 1rem; text-align: center;">
+                    <a href="/cart" style="color: #666; text-decoration: none;">← Вернуться в корзину</a>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2024 E-Commerce Store. Все права защищены.</p>
+            <p>Демонстрация паттернов: Адаптер, Декоратор, Компоновщик</p>
+        </div>
+    </footer>
+
+    <script>
+        let orderTotal = 0;
+        let cartItems = [];
+
+        // Загрузка сводки заказа
+        async function loadOrderSummary() {
+            const cart = JSON.parse(localStorage.getItem('cart') || '[]');
+            const summary = document.getElementById('order-summary');
+            cartItems = cart;
+
+            if (cart.length === 0) {
+                window.location.href = '/cart';
+                return;
+            }
+
+            summary.innerHTML = '<div class="spinner"></div>';
+            orderTotal = 0;
+
+            try {
+                const allProducts = await apiCall('/products/');
+                const allDecorators = await apiCall('/decorators/');
+
+                // Создаем словарь цен декораторов
+                const decoratorPrices = {};
+                allDecorators.forEach(d => {
+                    decoratorPrices[d.name] = parseFloat(d.cost);
+                });
+
+                summary.innerHTML = '';
+                orderTotal = 0;
+
+                for (const item of cart) {
+                    const product = allProducts.find(p => p.id == item.productId);
+
+                    if (product) {
+                        const basePrice = parseFloat(product.price);
+                        const baseTotal = basePrice * item.quantity;
+
+                        // Расчет стоимости дополнительных услуг
+                        let decoratorsCost = 0;
+                        let decoratorsList = [];
+
+                        if (item.decorators && item.decorators.length > 0) {
+                            item.decorators.forEach(decoratorName => {
+                                const cost = decoratorPrices[decoratorName] || 0;
+                                decoratorsCost += cost;
+                                decoratorsList.push(`${decoratorName} (+${cost}₽)`);
+                            });
+                        }
+
+                        const itemTotal = baseTotal + decoratorsCost;
+                        orderTotal += itemTotal;
+
+                        summary.innerHTML += `
+                            <div style="margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid #eee;">
+                                <div style="display: flex; justify-content: space-between; align-items: start;">
+                                    <div>
+                                        <strong style="font-size: 1.1rem;">${product.name}</strong>
+                                        <div style="font-size: 0.9rem; color: #666; margin-top: 0.3rem;">
+                                            ${item.quantity} × ${basePrice}₽ = ${baseTotal}₽
+                                        </div>
+                                        ${decoratorsList.length > 0 ? `
+                                            <div style="font-size: 0.85rem; color: #28a745; margin-top: 0.3rem;">
+                                                <small>Доп. услуги:</small><br>
+                                                ${decoratorsList.join('<br>')}
+                                            </div>
+                                        ` : ''}
+                                        ${item.personalizationText ? `
+                                            <div style="font-size: 0.85rem; color: #17a2b8; margin-top: 0.3rem;">
+                                                <small>Персонализация: "${item.personalizationText}"</small>
+                                            </div>
+                                        ` : ''}
+                                    </div>
+                                    <div style="font-weight: bold; font-size: 1.1rem;">
+                                        ${itemTotal.toFixed(2)}₽
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }
+                }
+
+                // Добавляем информацию о доставке (ориентировочно)
+                summary.innerHTML += `
+                    <div style="margin-top: 1rem; padding: 0.5rem; background: #f8f9fa; border-radius: 5px;">
+                        <div style="display: flex; justify-content: space-between; color: #666;">
+                            <span>Ориентировочная стоимость доставки:</span>
+                            <span>от 350₽</span>
+                        </div>
+                        <div style="font-size: 0.9rem; color: #999; margin-top: 0.3rem;">
+                            * Точная стоимость будет рассчитана после оформления заказа
+                        </div>
+                    </div>
+                `;
+
+                document.getElementById('order-total').textContent = `${orderTotal.toFixed(2)}₽`;
+
+            } catch (error) {
+                console.error('Failed to load order summary:', error);
+                summary.innerHTML = '<p style="color: #dc3545;">Ошибка загрузки данных. Пожалуйста, обновите страницу.</p>';
+            }
+        }
+
+        // Оформление заказа
+        async function placeOrder() {
+            const customerName = document.getElementById('customer-name').value.trim();
+            const customerEmail = document.getElementById('customer-email').value.trim();
+            const customerPhone = document.getElementById('customer-phone').value.trim();
+            const shippingAddress = document.getElementById('shipping-address').value.trim();
+            const paymentProvider = document.getElementById('payment-provider').value;
+            const deliveryProvider = document.getElementById('delivery-provider').value;
+
+            // Валидация полей
+            if (!customerName || !customerEmail || !shippingAddress || !customerPhone) {
+                showNotification('Пожалуйста, заполните все обязательные поля', 'error');
+                return;
+            }
+
+            // Простая валидация email
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(customerEmail)) {
+                showNotification('Пожалуйста, введите корректный email', 'error');
+                return;
+            }
+
+            // Простая валидация телефона
+            const phoneRegex = /^[\+\d\s\(\)\-]{10,20}$/;
+            if (!phoneRegex.test(customerPhone)) {
+                showNotification('Пожалуйста, введите корректный номер телефона', 'error');
+                return;
+            }
+
+            try {
+                showNotification('Оформление заказа...', 'info');
+
+                const cart = JSON.parse(localStorage.getItem('cart') || '[]');
+
+                if (cart.length === 0) {
+                    showNotification('Корзина пуста', 'error');
+                    return;
+                }
+
+                // Загружаем актуальные цены товаров
+                const allProducts = await apiCall('/products/');
+
+                // Подготавливаем данные для заказа
+                const orderItems = [];
+                const allDecorators = [];
+
+                for (const item of cart) {
+                    const product = allProducts.find(p => p.id == item.productId);
+                    if (product) {
+                        const itemPrice = parseFloat(product.price);
+                        const subtotal = itemPrice * item.quantity;
+
+                        orderItems.push({
+                            product_id: item.productId,
+                            quantity: item.quantity,
+                            subtotal: subtotal
+                        });
+
+                        // Собираем все декораторы
+                        if (item.decorators && item.decorators.length > 0) {
+                            allDecorators.push(...item.decorators);
+                        }
+                    }
+                }
+
+                // Создание заказа
+                const orderData = {
+                    user_id: 1,
+                    items: orderItems,
+                    decorators: [...new Set(allDecorators)] // Убираем дубликаты
+                };
+
+                console.log('Creating order with data:', orderData);
+
+                const order = await apiCall('/orders/', {
+                    method: 'POST',
+                    body: JSON.stringify(orderData)
+                });
+
+                showNotification(`Заказ №${order.order_id} создан! Обработка платежа...`, 'success');
+
+                // Обработка платежа
+                const paymentResult = await apiCall('/payment/process/', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        order_id: order.order_id,
+                        payment_provider: paymentProvider,
+                        amount: order.final_amount
+                    })
+                });
+
+                showNotification(`Платеж через ${paymentResult.provider} обработан!`, 'success');
+
+                // Организация доставки
+                const deliveryResult = await apiCall('/delivery/schedule/', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        order_id: order.order_id,
+                        delivery_provider: deliveryProvider,
+                        shipping_address: {
+                            name: customerName,
+                            address: shippingAddress,
+                            phone: customerPhone,
+                            email: customerEmail
+                        }
+                    })
+                });
+
+                showNotification(
+                    `Доставка через ${deliveryResult.provider} оформлена! ` +
+                    `Трек-номер: ${deliveryResult.tracking_id}`,
+                    'success'
+                );
+
+                // Очистка корзины
+                localStorage.removeItem('cart');
+
+                // Сохраняем информацию о последнем заказе для страницы заказов
+                localStorage.setItem('lastOrder', JSON.stringify({
+                    id: order.order_id,
+                    total: order.final_amount,
+                    date: new Date().toISOString()
+                }));
+
+                showNotification('Заказ успешно оформлен! Спасибо за покупку!', 'success');
+
+                // Перенаправление на страницу заказов
+                setTimeout(() => {
+                    window.location.href = '/orders';
+                }, 2000);
+
+            } catch (error) {
+                console.error('Failed to place order:', error);
+
+                let errorMessage = 'Ошибка при оформлении заказа';
+                if (error.message) {
+                    errorMessage += ': ' + error.message;
+                }
+
+                showNotification(errorMessage, 'error');
+
+                // Дополнительная информация для отладки
+                console.error('Error details:', {
+                    message: error.message,
+                    stack: error.stack
+                });
+            }
+        }
+
+        // Загрузка данных при открытии страницы
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('Checkout page loaded');
+            loadOrderSummary();
+        });
+
+        // Добавляем обработчик для кнопки "Вернуться в корзину"
+        document.addEventListener('click', function(e) {
+            if (e.target.tagName === 'A' && e.target.getAttribute('href') === '/cart') {
+                const cart = JSON.parse(localStorage.getItem('cart') || '[]');
+                if (cart.length === 0) {
+                    e.preventDefault();
+                    window.location.href = '/products';
+                }
+            }
+        });
+    </script>
+</body>
+</html>

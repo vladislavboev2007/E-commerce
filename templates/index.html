@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Главная - E-Commerce Store</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <script src="/static/js/common.js"></script>
+</head>
+<body>
+    <header>
+        <nav class="container">
+            <div class="logo">E-Store</div>
+            <ul class="nav-links">
+                <li><a href="/" class="active">Главная</a></li>
+                <li><a href="/products">Товары</a></li>
+                <li><a href="/bundles">Наборы</a></li>
+                <li><a href="/cart">Корзина</a></li>
+                <li><a href="/orders">Заказы</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main class="container">
+        <!-- Hero Section -->
+        <section class="hero card" style="text-align: center; padding: 3rem;">
+            <h1 style="font-size: 2.5rem; margin-bottom: 1rem;">Добро пожаловать в наш магазин</h1>
+            <p style="font-size: 1.2rem; margin-bottom: 2rem; color: #666;">
+                Лучшие товары с применением современных паттернов проектирования
+            </p>
+            <a href="/products" class="btn" style="font-size: 1.2rem; padding: 1rem 2rem;">
+                Начать покупки
+            </a>
+        </section>
+
+        <!-- Features Section -->
+        <section style="margin: 3rem 0;">
+            <h2 style="text-align: center; margin-bottom: 2rem;">Наши преимущества</h2>
+            <div class="grid grid-3">
+                <div class="card" style="text-align: center;">
+                    <h3>🛡️ Адаптеры</h3>
+                    <p>Интеграция с различными платежными системами и службами доставки</p>
+                </div>
+                <div class="card" style="text-align: center;">
+                    <h3>🎁 Декораторы</h3>
+                    <p>Дополнительные услуги: упаковка, доставка, персонализация</p>
+                </div>
+                <div class="card" style="text-align: center;">
+                    <h3>📦 Компоновщик</h3>
+                    <p>Готовые наборы товаров по специальным ценам</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Popular Products -->
+        <section style="margin: 3rem 0;">
+            <h2 style="margin-bottom: 2rem;">Популярные товары</h2>
+            <div id="popular-products" class="grid grid-4">
+                <div class="spinner"></div>
+            </div>
+        </section>
+
+        <!-- Categories -->
+        <section style="margin: 3rem 0;">
+            <h2 style="margin-bottom: 2rem;">Категории</h2>
+            <div id="categories" class="grid grid-3">
+                <div class="spinner"></div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2024 E-Commerce Store. Все права защищены.</p>
+            <p>Демонстрация паттернов: Адаптер, Декоратор, Компоновщик</p>
+        </div>
+    </footer>
+
+    <script>
+    async function apiCall(endpoint, options = {}) {
+        try {
+            console.log(`API Call: ${API_BASE}${endpoint}`);
+            const response = await fetch(`${API_BASE}${endpoint}`, {
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...options.headers
+                },
+                ...options
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const data = await response.json();
+            console.log(`API Response from ${endpoint}:`, data);
+            return data;
+        } catch (error) {
+            console.error('API call failed:', error);
+            showNotification('Ошибка при загрузке данных', 'error');
+            return null;
+        }
+    }
+
+    // Загрузка популярных товаров
+    async function loadPopularProducts() {
+        const container = document.getElementById('popular-products');
+
+        try {
+            const products = await apiCall('/products/?limit=4');
+
+            if (!products || products.length === 0) {
+                container.innerHTML = `
+                    <div style="grid-column: 1 / -1; text-align: center; padding: 2rem;">
+                        <h3>Товары не найдены</h3>
+                        <p>Попробуйте запустить init_data.py для добавления тестовых данных</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = '';
+
+            products.forEach(product => {
+                const productCard = `
+                    <div class="card">
+                        <div style="height: 100px; background: #f8f9fa; display: flex; align-items: center; justify-content: center; margin-bottom: 1rem; border-radius: 8px;">
+                            <span style="font-size: 2rem;">📱</span>
+                        </div>
+                        <h3>${product.name}</h3>
+                        <p class="price">${product.price}₽</p>
+                        <p style="color: #666; margin: 0.5rem 0; font-size: 0.9rem;">${product.category_name}</p>
+                        <p style="font-size: 0.8rem; margin: 0.5rem 0; color: #888;">${product.description.substring(0, 60)}...</p>
+                        <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
+                            <button class="btn" onclick="viewProduct(${product.id})">Подробнее</button>
+                            <button class="btn btn-success" onclick="addToCart(${product.id})">В корзину</button>
+                        </div>
+                    </div>
+                `;
+                container.innerHTML += productCard;
+            });
+        } catch (error) {
+            console.error('Failed to load products:', error);
+            container.innerHTML = `
+                <div style="grid-column: 1 / -1; text-align: center; padding: 2rem;">
+                    <h3>Ошибка загрузки товаров</h3>
+                    <p>Проверьте консоль браузера для подробностей</p>
+                </div>
+            `;
+        }
+    }
+
+    // Загрузка категорий
+    async function loadCategories() {
+        const container = document.getElementById('categories');
+
+        try {
+            const categories = await apiCall('/categories/');
+
+            if (!categories || categories.length === 0) {
+                container.innerHTML = '<p>Категории не найдены</p>';
+                return;
+            }
+
+            container.innerHTML = '';
+
+            categories.forEach(category => {
+                const icons = {
+                    'Электроника': '📱',
+                    'Одежда': '👕',
+                    'Бытовая техника': '🖥',
+                    'Книги': '📔',
+                    'Спорт и отдых': '🎾'
+                };
+
+                const categoryCard = `
+                    <div class="card" style="text-align: center;">
+                        <div style="font-size: 3rem; margin-bottom: 1rem;">${icons[category.name] || '📦'}</div>
+                        <h3>${category.name}</h3>
+                        <button class="btn btn-secondary" onclick="viewCategory(${category.id})">
+                            Смотреть товары
+                        </button>
+                    </div>
+                `;
+                container.innerHTML += categoryCard;
+            });
+        } catch (error) {
+            console.error('Failed to load categories:', error);
+            container.innerHTML = '<p>Ошибка загрузки категорий</p>';
+        }
+    }
+
+    function viewProduct(productId) {
+        window.location.href = `/product?id=${productId}`;
+    }
+
+    function viewCategory(categoryId) {
+        window.location.href = `/products?category=${categoryId}`;
+    }
+
+    function addToCart(productId) {
+        let cart = JSON.parse(localStorage.getItem('cart') || '[]');
+        const existingItem = cart.find(item => item.productId === productId && !item.decorators);
+
+        if (existingItem) {
+            existingItem.quantity += 1;
+        } else {
+            cart.push({
+                productId,
+                quantity: 1
+            });
+        }
+
+        localStorage.setItem('cart', JSON.stringify(cart));
+        showNotification('Товар добавлен в корзину', 'success');
+    }
+
+    function showNotification(message, type = 'info') {
+        const notification = document.createElement('div');
+        notification.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 1rem 1.5rem;
+            background: ${type === 'error' ? '#dc3545' : type === 'success' ? '#28a745' : '#17a2b8'};
+            color: white;
+            border-radius: 5px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            z-index: 1000;
+            animation: slideIn 0.3s ease;
+        `;
+        notification.textContent = message;
+
+        document.body.appendChild(notification);
+
+        setTimeout(() => {
+            notification.style.animation = 'slideOut 0.3s ease';
+            setTimeout(() => {
+                if (document.body.contains(notification)) {
+                    document.body.removeChild(notification);
+                }
+            }, 300);
+        }, 3000);
+    }
+
+    // Загрузка данных при открытии страницы
+    document.addEventListener('DOMContentLoaded', () => {
+        console.log('Страница загружена, запускаем загрузку данных...');
+        loadPopularProducts();
+        loadCategories();
+    });
+    </script>
+</body>
+</html>
