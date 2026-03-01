@@ -234,15 +234,26 @@
         }
 
         function addToCart(productId) {
+            // Находим товар в загруженном списке
+            const product = allProducts.find(p => p.id == productId);
+            if (!product) {
+                showNotification('Товар не найден', 'error');
+                return;
+            }
+
             let cart = JSON.parse(localStorage.getItem('cart') || '[]');
             const existingItem = cart.find(item => item.productId == productId && !item.decorators);
 
             if (existingItem) {
                 existingItem.quantity += 1;
+                existingItem.finalPrice = existingItem.basePrice * existingItem.quantity;
             } else {
                 cart.push({
                     productId: productId,
-                    quantity: 1
+                    quantity: 1,
+                    productName: product.name,           // Название товара
+                    basePrice: parseFloat(product.price), // Базовая цена
+                    finalPrice: parseFloat(product.price) // Итоговая цена
                 });
             }
 

@@ -2,12 +2,12 @@
 -- PostgreSQL database dump
 --
 
-\restrict 7rEMs8vDv3cGKnoRcuQ5oyxRAIZSrFSRn5KFJnqJ0SuVPbc2e3gRwbQ3ExCYhdZ
+\restrict telWcmvaaAhR3oe6fu3TEh6vYSL7EB37hojLuUeBeLpO5jnTrZkTbfBdBeJMlpz
 
 -- Dumped from database version 18.1
 -- Dumped by pg_dump version 18.1
 
--- Started on 2026-02-15 21:43:30
+-- Started on 2026-03-01 19:22:25
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -648,11 +648,11 @@ ALTER TABLE ONLY public.product
     ADD CONSTRAINT product_category_id_fkey FOREIGN KEY (category_id) REFERENCES public.category(id);
 
 
--- Completed on 2026-02-15 21:43:31
+-- Completed on 2026-03-01 19:22:26
 
 --
 -- PostgreSQL database dump complete
 --
 
-\unrestrict 7rEMs8vDv3cGKnoRcuQ5oyxRAIZSrFSRn5KFJnqJ0SuVPbc2e3gRwbQ3ExCYhdZ
+\unrestrict telWcmvaaAhR3oe6fu3TEh6vYSL7EB37hojLuUeBeLpO5jnTrZkTbfBdBeJMlpz
 

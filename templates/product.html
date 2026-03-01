@@ -239,11 +239,11 @@
 
                 if (result) {
                     document.getElementById('base-price').textContent =
-                        `Стоимость товаров: $${result.base_total.toFixed(2)}`;
+                        `Стоимость товаров: ${result.base_total.toFixed(2)}₽`;
                     document.getElementById('decorators-price').textContent =
-                        `Дополнительные услуги: $${result.decorators_total.toFixed(2)}`;
+                        `Дополнительные услуги: ${result.decorators_total.toFixed(2)}₽`;
                     document.getElementById('final-price').textContent =
-                        `Итого: $${result.final_price.toFixed(2)}`;
+                        `Итого: ${result.final_price.toFixed(2)}₽`;
                 }
             } catch (error) {
                 console.error('Failed to calculate price via API:', error);
@@ -300,9 +300,18 @@
 
         function addToCartWithDecorators() {
     const quantity = parseInt(document.getElementById('quantity')?.value) || 1;
+
+    // Получаем итоговую цену из элемента
     const finalPriceElement = document.getElementById('final-price');
-    const finalPriceText = finalPriceElement.textContent.replace('Итого: $', '');
+    const finalPriceText = finalPriceElement.textContent.replace('Итого:', '').replace('₽', '').trim();
     const finalPrice = parseFloat(finalPriceText);
+
+    // Базовая цена за единицу
+    const basePrice = parseFloat(currentProduct.price);
+    const baseTotal = basePrice * quantity;
+
+    // Стоимость услуг = итого - базовая стоимость
+    const decoratorsCost = finalPrice - baseTotal;
 
     // Сохраняем информацию о декораторах для этого товара
     const cartItem = {
@@ -312,9 +321,13 @@
         personalizationText: personalizationText,
         finalPrice: finalPrice,
         productName: currentProduct.name,
-        basePrice: parseFloat(currentProduct.price),
-        // Добавляем информацию о стоимости услуг отдельно
-        decoratorsCost: finalPrice - (parseFloat(currentProduct.price) * quantity)
+        basePrice: basePrice,  // Цена за единицу
+        decoratorsCost: decoratorsCost,
+        // Добавляем детальную информацию о каждой услуге
+        decoratorsDetails: selectedDecorators.map(name => ({
+            name: name,
+            cost: decoratorCosts[name] || 0
+        }))
     };
 
     let cart = JSON.parse(localStorage.getItem('cart') || '[]');
@@ -337,6 +350,16 @@
         updatePriceCalculation();
     }, 1000);
 }
+
+// Добавьте объект с ценами декораторов
+const decoratorCosts = {
+    'Подарочная упаковка': 199.00,
+    'Срочная доставка': 499.00,
+    'Персонализация (гравировка)': 299.00,
+    'Страхование товара': 249.00,
+    'Расширенная гарантия': 999.00,
+    'Поздравительная открытка': 99.00
+};
 
         function addToCart(productId, quantity = 1) {
             let cart = JSON.parse(localStorage.getItem('cart') || '[]');
