@@ -68,6 +68,7 @@ The application uses PostgreSQL with the following tables:
 - **order_decorators** - services in orders
 
 ## 📁 Project Structure
+<img width="312" height="576" alt="image" src="https://github.com/user-attachments/assets/ece989f0-2c6c-4da6-9c0f-037257964b49" />
 
 
 ## 🎯 Educational Value
