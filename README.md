@@ -117,7 +117,8 @@ Update the connection string in database.py:
 ```python
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://username:password@localhost:5432/E-commerce")
 ```
-Step 4: Initialize Database with Test Data
+**Step 4: Initialize Database with Test Data**
+
 **Option 1: Using Python Script**
 ```bash
 # Run the initialization script to create tables and populate test data
