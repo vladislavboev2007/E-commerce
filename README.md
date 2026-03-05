@@ -162,8 +162,12 @@ python test_app.py
 - Update if different:
 
 ```javascript
-// static/js/common.js
-const API_BASE = 'http://localhost:8000/api'; 
+// static/js/common.js:
+const API_BASE = 'http://localhost:8000/api';
+
+// main.py:
+if __name__ == "__main__":
+    uvicorn.run(app, host="127.0.0.1")
 ```
 2. **Hard Refresh Browser Cache**
 
