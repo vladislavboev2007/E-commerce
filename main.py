@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session, joinedload
 from typing import List, Optional
 from decimal import Decimal
 import os
+import uvicorn
 
 from database import SessionLocal, engine, Base, Product, Category, Order, OrderItem, Decorator, OrderDecorator
 from adapters import (
@@ -483,5 +484,4 @@ async def debug_orders(db: Session = Depends(get_db)):
 
 
 if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="127.0.0.1", port=8001)
+    uvicorn.run(app, host="127.0.0.1")

@@ -58,8 +58,3 @@ CREATE TABLE order_decorators (
         FOREIGN KEY (decorator_id) 
         REFERENCES decorators(id)
 );
-
-UPDATE decorators SET name = 'Gift Wrap' WHERE name = 'gift_wrap';
-UPDATE decorators SET name = 'Express Shipping' WHERE name = 'express_shipping';
-UPDATE decorators SET name = 'Personalization' WHERE name = 'personalization';
-UPDATE decorators SET name = 'Insurance' WHERE name = 'insurance';

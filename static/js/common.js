@@ -1,5 +1,5 @@
 // static/js/common.js
-const API_BASE = 'http://localhost:8001/api';
+const API_BASE = 'http://localhost:8000/api';
 
 async function apiCall(endpoint, options = {}) {
     try {
