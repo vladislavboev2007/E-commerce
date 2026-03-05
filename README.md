@@ -117,17 +117,21 @@ Update the connection string in database.py:
 ```python
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://username:password@localhost:5432/E-commerce")
 ```
-**Step 4: Initialize Database with Test Data (Unnecessary
-)**
+Step 4: Initialize Database with Test Data
+**Option 1: Using Python Script**
 ```bash
+# Run the initialization script to create tables and populate test data
 python init_data.py
 ```
+**Option 2: Restore from Backup (using Plain format)**
+```bash
+# Alternative: Restore database from the included SQL backup
+psql -U postgres -d E-commerce < database/backup.sql
+```
 
-This will populate the database with:
+**Note:** The database backup (`database/backup.sql`) contains the complete schema and test data. The Python script provides the same functionality if you prefer not to use the backup file.
 
-* Categories (Электроника, Одежда, Бытовая техника, Книги, Спорт и отдых)
-* Products with realistic prices in Russian Rubles
-* Decorators (additional services) with fixed costs
+
 
 **Step 5: Start the Application**
 ```bash
@@ -147,7 +151,8 @@ python test_app.py
 ```
 ## ⚠️ Troubleshooting
 **Issue: Data not loading (Products/Categories not displayed)**
-Solutions:
+
+**Solutions:**
 
 1. **Check Port Configuration**
 
@@ -155,10 +160,10 @@ Solutions:
 - Default server port: 8000
 - Update if different:
 
-  ```javascript
-  // static/js/common.js
-  const API_BASE = 'http://localhost:8000/api';  // Change 8000 to your actual port
-  ```
+```javascript
+// static/js/common.js
+const API_BASE = 'http://localhost:8000/api'; 
+```
 2. **Hard Refresh Browser Cache**
 
 - Press `Ctrl+F5` (Windows/Linux) or `Cmd+Shift+R` (Mac)
