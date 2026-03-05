@@ -68,7 +68,8 @@ The application uses PostgreSQL with the following tables:
 - **order_decorators** - services in orders
 
 ## 📁 Project Structure
-<img width="312" height="576" alt="image" src="https://github.com/user-attachments/assets/ece989f0-2c6c-4da6-9c0f-037257964b49" />
+<img width="204" height="580" alt="image" src="https://github.com/user-attachments/assets/a25f98b5-b81d-4192-932f-868df5e962da" />
+
 
 
 ## 🎯 Educational Value
@@ -116,9 +117,12 @@ Update the connection string in database.py:
 ```python
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://username:password@localhost:5432/E-commerce")
 ```
-Step 4: Initialize Database with Test Data
-bash
+Step 4: Initialize Database with Test Data (Unnecessary
+)
+```bash
 python init_data.py
+```
+
 This will populate the database with:
 
 * Categories (Электроника, Одежда, Бытовая техника, Книги, Спорт и отдых)
@@ -129,6 +133,7 @@ Step 5: Start the Application
 ```bash
 uvicorn main:app --reload
 ```
+
 or
 
 ```bash
@@ -141,29 +146,25 @@ Step 6: Run Unit Tests (Optional)
 python test_app.py
 ```
 ## ⚠️ Troubleshooting
-Issue: Data not loading (Products/Categories not displayed)
+**Issue: Data not loading (Products/Categories not displayed)**
 Solutions:
 
-Check Port Configuration
+1. **Check Port Configuration**
 
-Verify that the port in static/js/common.js matches the port where the server is running
+- Verify that the port in static/js/common.js matches the port where the server is running
+- Default server port: 8000
+- Update if different:
 
-Default server port: 8000
-
-Update if different:
-
-```javascript
+- ```javascript
 // static/js/common.js
 const API_BASE = 'http://localhost:8000/api';  // Change 8000 to your actual port
 ```
-Hard Refresh Browser Cache
+2. **Hard Refresh Browser Cache**
 
-Press Ctrl+F5 (Windows/Linux) or Cmd+Shift+R (Mac)
+- Press `Ctrl+F5` (Windows/Linux) or `Cmd+Shift+R` (Mac)
+- This forces the browser to reload all resources including the updated JavaScript
 
-This forces the browser to reload all resources including the updated JavaScript
-
-Restart the Application
-
+3. **Restart the Application**
 ```bash
 # Stop the server (Ctrl+C)
 python main.py
